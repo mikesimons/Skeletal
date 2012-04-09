@@ -30,18 +30,18 @@ define ->
             "l": 0
             "c":
                 "left-thigh":
-                    "r": -90
+                    "r": -100
                     "l": 10
                     "c":
                         "left-shin":
-                            "r": 0
+                            "r": -15
                             "l": 10
                             "c":
                                 "left-foot":
                                     "l": 3
-                                    "r": 90
+                                    "r": 115
                 "right-thigh":
-                    "r": -90
+                    "r": -65
                     "l": 10
                     "c":
                         "right-shin":
@@ -60,39 +60,39 @@ define ->
                             "l": 0
                             "c":
                                 "left-bicep":
-                                    "r": 180
-                                    "l": 3
+                                    "r": -145
+                                    "l": 4
                                     "c":
                                         "left-forearm":
-                                            "r": 0
-                                            "l": 4
+                                            "r": 15
+                                            "l": 5
                                             "c":
                                                 "left-hand":
-                                                    "r": 45
+                                                    "r": 15
                                                     "l": 1
                         "right-shoulder":
                             "r": 0
                             "l": 0
                             "c":
                                 "right-bicep":
-                                    "r": 180
-                                    "l": 3
+                                    "r": 145
+                                    "l": 4
                                     "c":
                                         "right-forearm":
-                                            "r": 0
-                                            "l": 4
+                                            "r": 15
+                                            "l": 5
                                             "c":
                                                 "right-hand":
-                                                    "r": 45
+                                                    "r": 15
                                                     "l": 1
                         "head":
                             "r": 0
-                            "l": 1
+                            "l": 4
 
     # Example actor data
     actor =
         "bones": bones
-        "scale": 10
+        "scale": 5
         "x": 200
         "y": 200
 
@@ -117,8 +117,8 @@ define ->
         delta = Date.now() - last
         window.webkitRequestAnimationFrame(render)
 
-        # Steps every every 2 seconds
-        if delta >= 2000
+        # Steps every second
+        if delta >= 1000
 
             # Overflow; reset
             if index > list.length - 1

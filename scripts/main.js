@@ -2,4 +2,4 @@ require({
   paths: {
     cs: 'cs'
   }
-}, ['cs!csmain']);
+}, ['cs!skeletal']);
