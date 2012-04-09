@@ -1,27 +1,31 @@
-define ->
+define ->    
     # Internal method for recursing bone hierarchy children and resolving them
-    _resolve = (name, x, y, scale, length, parentRotation, rotation, children, list) ->
+    _resolve = (name, x, y, scale, length, rotation, children, cb, state) ->
         # Calculate new values by accumulating rotation and converting polar
         # bone vector to cartesian end point. This will be pivot for children.
-        rotation += parentRotation
+        # Given angles are in degrees so they're converted to radians here too.
         endX = x + (length * scale * Math.cos(rotation * (Math.PI / 180)))
         endY = y - (length * scale * Math.sin(rotation * (Math.PI / 180)))
 
-        # Push this node on to the result stack
-        # TODO: Find a better way to do it than creating a new array
-        list.push([name, x, y, endX, endY])
+        # Invoke node callback
+        cb(name, x, y, endX, endY, rotation, length * scale, state)
 
         # Descend to children
         for childName, child of children
-            _resolve(childName, endX, endY, scale, child.l, rotation, child.r, child.c, list)
+            _resolve(childName, endX, endY, scale, child.l, (child.r + rotation) % 360, child.c, cb, state)
 
-        return list
+        return state
+
+    displayListCallback = (name, x, y, eX, eY, r, l, state) ->
+        state.displayList = [] unless state.displayList
+        state.displayList.push([name, x, y, eX, eY, r, l])
 
     # Resolves position of each node of a bone hierarchy and creates a display list
-    resolve = (bones, x, y, scale) ->
+    resolve = (bones, x, y, scale, cb) ->
+        cb = displayListCallback unless cb
         k = Object.keys(bones)
         root = bones[k[0]]
-        return _resolve(k[0], x, y, scale, root.l, 0, root.r, root.c, [])
+        return _resolve(k[0], x, y, scale, root.l, root.r, root.c, cb, {})
 
     # Example bone data
     bones =
@@ -92,16 +96,15 @@ define ->
     # Example actor data
     actor =
         "bones": bones
-        "scale": 5
+        "scale": 10
         "x": 200
         "y": 200
 
-    # Resolve hierarchy to display list
-    list = resolve(actor.bones, actor.x, actor.y, actor.scale)
+    # Resolve hierarchy to display list for debug
+    list = resolve(actor.bones, actor.x, actor.y, actor.scale).displayList
     console.log(list)
 
     # Setup debug render
-    index = list.length # triggers overflow so initial reset happens in loop
     last = Date.now()
 
     canvas = document.createElement("canvas")
@@ -111,44 +114,46 @@ define ->
     document.body.appendChild(canvas)
 
     context = canvas.getContext("2d")
-    context.strokeWidth = 2
+    
+    debugDrawCallback = (name, x, y, eX, eY, r, l, state) ->
+        
+        # Transform context matrix to bone origin & orientation
+        # Canvas uses a different zero degree to unit circle
+        context.save()
+        context.translate(x, y)
+        context.rotate((270 - r) * (Math.PI / 180))
+        
+        # Init style
+        context.fillStyle = "rgba(127, 200, 255, 0.5)"
+        context.strokeStyle = "rgba(127, 200, 255, 1.0)"
+        
+        # Draw bone outline, fill and label
+        context.beginPath()
+        context.arc(0, 0, 5, 0, Math.PI, true)
+        context.lineTo(0, l)
+        context.lineTo(5, 0)
+        context.fillText(name, 10, l / 2)
+        context.fill()
+        context.stroke()
+        
+        # Draw origin circle
+        context.beginPath()
+        context.fillStyle = "rgba(127, 200, 255, 1.0)"
+        context.arc(0, 0, 3, 0, Math.PI * 2, false)
+        context.fill()
+        
+        # Draw origin -> end point line
+        context.beginPath()
+        context.moveTo(0, 0)
+        context.lineTo(0, l)
+        context.stroke()
+        context.restore()
 
     render = ->
         delta = Date.now() - last
+        last = Date.now()
         window.webkitRequestAnimationFrame(render)
-
-        # Steps every second
-        if delta >= 1000
-
-            # Overflow; reset
-            if index > list.length - 1
-                index = 0
-                context.fillStyle = "#fff"
-                context.fillRect(0, 0, canvas.width, canvas.height)
-
-            e = list[index]
-            last = Date.now()
-            console.log("#{e[0]}: #{e[1]}, #{e[2]} to #{e[3]}, #{e[4]}")
-
-            # Draw "bone"
-            context.beginPath()
-            context.moveTo(e[1], e[2])
-            context.strokeStyle = "rgba(0, 0, 0, 0.25)"
-            context.lineTo(e[3], e[4])
-            context.stroke()
-
-            # Draw red start node
-            context.beginPath()
-            context.fillStyle = "rgba(255, 0, 0, 0.5)"
-            context.arc(e[1], e[2], 3, 0, Math.PI*2, false)
-            context.fill()
-
-            # Draw blue end node
-            context.beginPath()
-            context.fillStyle = "rgba(0, 0, 255, 0.5)"
-            context.arc(e[3], e[4], 3, 0, Math.PI*2, false)
-            context.fill()
-
-            index += 1
+        context.fillRect(0, 0, canvas.width, canvas.height)
+        resolve(actor.bones, actor.x, actor.y, actor.scale, debugDrawCallback)
 
     render()
